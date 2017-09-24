@@ -1,0 +1,122 @@
+---
+title: "Análse dos dados da Remax"
+output: html_notebook
+---
+
+Sequência:
+1 - Análise factorial: excluir o preço e procurar reduzir o nr de variáveis através da identificação de novos eixos factoriais, não correlaccionados.
+2 - Análise de regressao múltipla, dependência 1 variável quantitativa
+
+
+
+Ler dados
+```{r}
+imoveis <- read.csv(file="Remax data_revised_UTF8.csv", sep=";", dec=",", strip.white = TRUE)
+```
+
+Ver os dados
+```{r, eval=FALSE, include=FALSE}
+View(imoveis)
+```
+
+
+Nota: Para listar os encodings possíveis fazer:
+```{r, eval=FALSE, include=FALSE}
+iconvlist()
+```
+
+
+Fazer para exibir caracteres correctamente
+```{r}
+Sys.setlocale(category = "LC_ALL", locale = "pt_PT.UTF-8") 
+```
+
+Número de observações por categoria energética
+```{r}
+table(imoveis$erate)
+```
+
+Criar novo subset de imoveis contendo apenas as instâncias que têm classe energetica definida
+```{r}
+imo<-subset(imoveis, erate!="NC" & erate!="")
+# ou
+# imo<-imoveis[imoveis["erate"]!="",]
+# imo<-imo[imo["erate"]!="NC",]
+```
+
+Número de observações por categoria energética do novo subset (apenas com classe energetica)
+```{r}
+table(imo$erate)
+```
+
+Criar funcao para converter strings de colunas para numericos
+```{r}
+convert.to.numeric <- function(var) {
+  result <- var
+  result <- gsub("\\.", "", result)    # Remove os "."
+  result <- gsub(",", ".", result)     # Substitui as "," por "."
+  result <- gsub("[^0-9,.-]", "", result) # Remove todos caracteres não numericos excluindo ainda ","  "." e "-"
+  result <- as.numeric(result)
+}
+```
+
+
+Converter as variaveis Preco, AreaContrucaoM2, TamLoteM2, TotalM2 para numerico
+```{r}
+imo$preco <- convert.to.numeric(imo$preco)
+imo$AreaConstrucaoM2 <- convert.to.numeric(imo$AreaConstrucaoM2)
+imo$TamLoteM2 <- convert.to.numeric(imo$TamLoteM2)
+imo$TotalM2 <- convert.to.numeric(imo$TotalM2)
+```
+
+Converte as variáveis lat e lng para numerico
+```{r}
+imo$lat <- as.numeric(gsub("[^0-9.-]", "", imo$lat))
+imo$lng <- as.numeric(gsub("[^0-9.-]", "", imo$lng))
+```
+
+Nota: No gsub quando se utiliza o ponto assim "[.]" não é necessário colocar os escapes "\\"
+
+Converter as variaveis titulo, desc, e url para character
+```{r}
+imo$titulo <- as.character(imo$titulo)
+imo$desc <- as.character(imo$desc)
+imo$url <- as.character(imo$url)
+```
+
+
+Verificar a estrutura do dataset:
+```{r}
+str(imo)
+```
+
+Nota: A variável de class. energética (erate) é uma variável ordinal (qualitativa com ordenação)
+
+Análise dos outliers:
+```{r}
+imo.quartis <- quantile(imo$preco,c(0.25, 0.5, 0.75), na.rm = "TRUE") #[1] <- 1º quartil [3] <- 3º quartil
+imo.sem.outls.preco <- subset(imo, preco>imo.quartis[1] & preco<imo.quartis[3])
+boxplot(imo.sem.outls.preco$preco~imo.sem.outls.preco$erate)
+```
+
+
+Análise dos dados
+```{r}
+hist(imo$preco, prob = TRUE, breaks = 40)
+# lines(density(imo$preco, na.rm = TRUE))
+```
+
+
+Guardar ficheiro
+```{r}
+options(scipen=500) # Para evitar que grave com notação científica "3e06"
+write.csv2(imo, "RemaxData_IntermResults.csv")
+```
+
+
+Aplicando a análise multivariada (ANOVA) ao preço nas diferente populações de classe energética
+```{r}
+anova(lm(imo$preco~imo$erate))
+```
+
+
