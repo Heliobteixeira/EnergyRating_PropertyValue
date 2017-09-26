@@ -23,6 +23,7 @@ class RemaxDataset:
         self.andar = []
         self.casasbanho = []
         self.assoalhadas = []
+        self.nrpisos = []
 
 def is_int(s):
     try:
@@ -33,7 +34,7 @@ def is_int(s):
 
 def parsedata():
     """ Returns dictionary with label -> description """
-    csvfilepath = '/Users/helioteixeira/Library/Mobile Documents/com~apple~CloudDocs/DataAnalytics/DadosRemax/Remax data_revised_UTF8.csv'
+    csvfilepath = '/Users/helioteixeira/Library/Mobile Documents/com~apple~CloudDocs/DataAnalytics/EnergyRating_PropertyValue/DataPreparation/Remax data_revised_UTF8.csv'
     with open(csvfilepath , 'rt', encoding='UTF8') as csvfile:
         csvreader = csv.reader(csvfile, delimiter=';')
 
@@ -42,13 +43,14 @@ def parsedata():
 
         next(csvreader, None) 
         for csvreader_row in csvreader:
-            if (csvreader_row[11]!=''):
+            if (csvreader_row[15]!=''):
                 remaxdata_labeled.id.append(int(csvreader_row[0]))
                 remaxdata_labeled.data.append(csvreader_row[3]) 
                 remaxdata_labeled.nrquartos.append(csvreader_row[8])
                 remaxdata_labeled.andar.append(csvreader_row[13])
                 remaxdata_labeled.casasbanho.append(csvreader_row[9])
                 remaxdata_labeled.assoalhadas.append(csvreader_row[11])
+                remaxdata_labeled.nrpisos.append(csvreader_row[15])
             else:
                 remaxdata_unlabeled.id.append(int(csvreader_row[0]))
                 remaxdata_unlabeled.data.append(csvreader_row[3]) 
@@ -98,13 +100,13 @@ def main():
     size = int(len(remax_labeled.data) * 0.9)
 
     traindata = remax_labeled.data[:size]
-    trainlabel = remax_labeled.assoalhadas[:size]
+    trainlabel = remax_labeled.nrpisos[:size]
 
     testdata = remax_labeled.data[size:]
-    testlabel = remax_labeled.assoalhadas[size:]
+    testlabel = remax_labeled.nrpisos[size:]
 
     # BoW
-    count_vect = CountVectorizer(encoding=u'utf-8', lowercase=True, analyzer=u'word')
+    count_vect = CountVectorizer(encoding=u'utf-8', lowercase=True, analyzer=u'word', stop_words=stopwords.words('portuguese'))
     X_train_data = count_vect.fit_transform(traindata)
 
     # TFiDF
@@ -134,6 +136,17 @@ def main():
          testlabel,
          predicted_svm))
 
+## 75% Precision para nr quartos
+    predictabledata = remax_unabeled.data
+    
+    # Predict a class for each description
+    X_pred_data = count_vect.transform(predictabledata)
+    X_pred_data_tfidf = tfidf_transformer.transform(X_pred_data)
+
+    predicted_svm = classifier_svm.predict(X_pred_data_tfidf)
+
+    for (desc, label) in predictabledata, predicted_svm:
+        print(predicted_svm + ' : ' + predictabledata)
 
 if __name__ == "__main__":
     main()
