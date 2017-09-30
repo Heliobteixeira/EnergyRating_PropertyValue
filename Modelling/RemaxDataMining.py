@@ -18,12 +18,18 @@ from sklearn.pipeline import Pipeline
 class RemaxDataset:
     def __init__(self):
         self.id =[]
-        self.data = []
-        self.nrquartos = []
-        self.andar = []
-        self.casasbanho = []
-        self.assoalhadas = []
-        self.nrpisos = []
+        self.text = []
+        self.textheader = ''
+        self.label = []
+        self.labelheader = ''
+    
+    def partitiondataset(sizeoftrain=0.9):
+        size = int(len(remax_labeled.label) * 0.9)
+        traininterval = [0:size]
+        testinterval = [size:0]
+        
+    
+    
 
 def is_int(s):
     try:
@@ -32,33 +38,32 @@ def is_int(s):
     except ValueError:
         return False
 
-def parsedata():
-    """ Returns dictionary with label -> description """
+def parsecsvdata(csvfilename, id_colindex, text_colindex, label_colindex, has_headers=False):
+    """ Returns 2 dictionaries (labeled and unlabeled dataset) with label -> description """
+    
     csvfilepath = '/Users/helioteixeira/Library/Mobile Documents/com~apple~CloudDocs/DataAnalytics/EnergyRating_PropertyValue/DataPreparation/Remax data_revised_UTF8.csv'
+    
     with open(csvfilepath , 'rt', encoding='UTF8') as csvfile:
         csvreader = csv.reader(csvfile, delimiter=';')
 
         remaxdata_labeled = RemaxDataset()
         remaxdata_unlabeled = RemaxDataset()
 
-        next(csvreader, None) 
+        if has_headers: next(csvreader, None)
+        
         for csvreader_row in csvreader:
-            if (csvreader_row[15]!=''):
-                remaxdata_labeled.id.append(int(csvreader_row[0]))
-                remaxdata_labeled.data.append(csvreader_row[3]) 
-                remaxdata_labeled.nrquartos.append(csvreader_row[8])
-                remaxdata_labeled.andar.append(csvreader_row[13])
-                remaxdata_labeled.casasbanho.append(csvreader_row[9])
-                remaxdata_labeled.assoalhadas.append(csvreader_row[11])
-                remaxdata_labeled.nrpisos.append(csvreader_row[15])
+            if (csvreader_row[label_colindex]!=''):
+                remaxdata_labeled.id.append(int(csvreader_row[id_colindex]))
+                remaxdata_labeled.text.append(csvreader_row[text_colindex]) 
+                remaxdata_labeled.label.append(csvreader_row[label_colindex])
             else:
-                remaxdata_unlabeled.id.append(int(csvreader_row[0]))
-                remaxdata_unlabeled.data.append(csvreader_row[3]) 
+                remaxdata_unlabeled.id.append(int(csvreader_row[id_colindex]))
+                remaxdata_unlabeled.text.append(csvreader_row[text_colindex]) 
                 
         return (remaxdata_labeled, remaxdata_unlabeled)
 
 def tokenizar_palavras(texto):
-    portuguese_tokenizer = nltk.data.load('tokenizers/punkt/PY3/portuguese.pickle')    
+    portuguese_tokenizer = nltk.description.load('tokenizers/punkt/PY3/portuguese.pickle')    
     frases = portuguese_tokenizer.tokenize(texto)
     words_list = []
     return [word for frase in frases for word in nltk.word_tokenize(frase)]
@@ -95,15 +100,16 @@ criar bag of non stop words e bigrams
 def main():
     """ Programa principal """
     #nltk.download('stopwords')
-    (remax_labeled , remax_unabeled) = parsedata()
+    csvfilename = '/Users/helioteixeira/Library/Mobile Documents/com~apple~CloudDocs/DataAnalytics/EnergyRating_PropertyValue/DataPreparation/Remax data_revised_UTF8.csv'
+    (remax_labeled , remax_unabeled) = parsecsvdata(csvfilename, 0, 3, 9, True)
 
-    size = int(len(remax_labeled.data) * 0.9)
+    size = int(len(remax_labeled.label) * 0.9)
 
-    traindata = remax_labeled.data[:size]
-    trainlabel = remax_labeled.nrpisos[:size]
+    traindata = remax_labeled.text[:size]
+    trainlabel = remax_labeled.label[:size]
 
-    testdata = remax_labeled.data[size:]
-    testlabel = remax_labeled.nrpisos[size:]
+    testdata = remax_labeled.text[size:]
+    testlabel = remax_labeled.label[size:]
 
     # BoW
     count_vect = CountVectorizer(encoding=u'utf-8', lowercase=True, analyzer=u'word', stop_words=stopwords.words('portuguese'))
@@ -137,7 +143,7 @@ def main():
          predicted_svm))
 
 ## 75% Precision para nr quartos
-    predictabledata = remax_unabeled.data
+    predictabledata = remax_unabeled.text
     
     # Predict a class for each description
     X_pred_data = count_vect.transform(predictabledata)
